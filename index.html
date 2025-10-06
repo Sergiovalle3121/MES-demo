@@ -1,0 +1,2578 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MES Ligero - Sistema de Producción de Cámaras</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+  <style id="app-style">
+    :root {
+      --primary: #0d6efd;
+      --success: #198754;
+      --warning: #ffc107;
+      --danger: #dc3545;
+      --light: #f8f9fa;
+      --dark: #343a40;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f5f7fa;
+    }
+    
+    .navbar-brand img {
+      height: 40px;
+    }
+    
+    .sidebar {
+      background-color: var(--dark);
+      color: var(--light);
+      min-height: calc(100vh - 56px);
+      transition: all 0.3s;
+    }
+    
+    .sidebar .nav-link {
+      color: rgba(255, 255, 255, 0.8);
+      padding: 0.75rem 1rem;
+      border-radius: 0.25rem;
+      margin: 0.2rem 0;
+    }
+    
+    .sidebar .nav-link:hover,
+    .sidebar .nav-link.active {
+      color: white;
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    .sidebar .nav-link i {
+      margin-right: 0.5rem;
+      width: 20px;
+      text-align: center;
+    }
+    
+    .main-content {
+      padding: 1.5rem;
+    }
+    
+    .card {
+      border: none;
+      border-radius: 8px;
+      box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+      margin-bottom: 1.5rem;
+    }
+    
+    .card-header {
+      font-weight: 600;
+      background-color: #fff;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    
+    .station-card {
+      border-left: 4px solid var(--primary);
+      transition: all 0.2s;
+    }
+    
+    .station-card.status-ok {
+      border-left-color: var(--success);
+    }
+    
+    .station-card.status-warning {
+      border-left-color: var(--warning);
+    }
+    
+    .station-card.status-danger {
+      border-left-color: var(--danger);
+    }
+    
+    .bay-flow {
+      display: flex;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      padding: 1rem 0;
+    }
+    
+    .bay-item {
+      min-width: 200px;
+      margin-right: 1rem;
+      flex: 0 0 auto;
+      position: relative;
+    }
+    
+    .bay-item::after {
+      content: '→';
+      position: absolute;
+      right: -15px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 1.5rem;
+      color: #ced4da;
+    }
+    
+    .bay-item:last-child::after {
+      display: none;
+    }
+    
+    .status-badge {
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 5px;
+    }
+    
+    .status-ok {
+      background-color: var(--success);
+    }
+    
+    .status-warning {
+      background-color: var(--warning);
+    }
+    
+    .status-danger {
+      background-color: var(--danger);
+    }
+    
+    .status-ready {
+      background-color: #6c757d;
+    }
+    
+    .status-working {
+      background-color: #0dcaf0;
+    }
+    
+    .status-hold {
+      background-color: var(--warning);
+    }
+    
+    .status-rework {
+      background-color: #6f42c1;
+    }
+    
+    .metrics-card {
+      text-align: center;
+      padding: 1rem;
+    }
+    
+    .metrics-card h3 {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+    }
+    
+    .metrics-card p {
+      color: #6c757d;
+      margin-bottom: 0;
+    }
+    
+    .timeline {
+      position: relative;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    .timeline::before {
+      content: '';
+      position: absolute;
+      width: 6px;
+      background-color: #e9ecef;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      margin-left: 17px;
+    }
+    
+    .timeline-item {
+      padding: 10px 40px;
+      position: relative;
+      margin-bottom: 10px;
+    }
+    
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      width: 25px;
+      height: 25px;
+      background-color: #fff;
+      border: 4px solid var(--primary);
+      border-radius: 50%;
+      left: 8px;
+      top: 15px;
+    }
+    
+    .timeline-item.done::before {
+      border-color: var(--success);
+    }
+    
+    .timeline-item.rework::before {
+      border-color: var(--warning);
+    }
+    
+    .unit-item {
+      border-left: 3px solid #dee2e6;
+      padding: 0.5rem 1rem;
+      margin-bottom: 0.5rem;
+      transition: all 0.2s;
+    }
+    
+    .unit-item:hover {
+      border-left-width: 5px;
+    }
+    
+    .unit-item.status-ready {
+      border-left-color: #6c757d;
+    }
+    
+    .unit-item.status-working {
+      border-left-color: #0dcaf0;
+    }
+    
+    .unit-item.status-hold {
+      border-left-color: var(--warning);
+    }
+    
+    .unit-item.status-rework {
+      border-left-color: #6f42c1;
+    }
+    
+    .unit-item.status-done {
+      border-left-color: var(--success);
+    }
+    
+    /* Animaciones */
+    .fade-in {
+      animation: fadeIn 0.5s ease;
+    }
+    
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+    
+    /* Tabla de configuración */
+    .config-table th, .config-table td {
+      padding: 0.75rem;
+    }
+    
+    /* Gráfico Gantt */
+    .gantt-chart {
+      margin-top: 20px;
+    }
+    
+    .gantt-row {
+      display: flex;
+      margin-bottom: 5px;
+      align-items: center;
+    }
+    
+    .gantt-row-label {
+      width: 100px;
+      font-weight: 500;
+      text-align: right;
+      padding-right: 15px;
+    }
+    
+    .gantt-row-bars {
+      flex: 1;
+      display: flex;
+      height: 25px;
+      position: relative;
+      background-color: #f8f9fa;
+    }
+    
+    .gantt-bar {
+      height: 100%;
+      position: absolute;
+    }
+    
+    .gantt-bar-step {
+      background-color: var(--primary);
+      border-radius: 3px;
+    }
+    
+    .gantt-bar-rework {
+      background-color: var(--warning);
+      border-radius: 3px;
+    }
+    
+    .scanner-form {
+      max-width: 350px;
+      margin: 2rem auto;
+      background: #fff;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="javascript:void(0)">
+        <i class="fas fa-industry"></i> MES Ligero
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="javascript:void(0)" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+              <i class="fas fa-user-circle"></i> Usuario
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="javascript:void(0)">Perfil</a></li>
+              <li><a class="dropdown-item" href="javascript:void(0)">Configuración</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item" href="javascript:void(0)">Cerrar sesión</a></li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container-fluid">
+    <div class="row">
+      <!-- Sidebar -->
+      <div class="col-lg-2 col-md-3 px-0 sidebar">
+        <div class="p-3">
+          <ul class="nav flex-column">
+            <li class="nav-item">
+              <a class="nav-link active" href="javascript:void(0)" data-page="dashboard">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="javascript:void(0)" data-page="bay-view">
+                <i class="fas fa-th"></i> Vista de Bahía
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="javascript:void(0)" data-page="work-order">
+                <i class="fas fa-clipboard-list"></i> Work Order
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="javascript:void(0)" data-page="configuration">
+                <i class="fas fa-cogs"></i> Configuración
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Main Content -->
+      <div class="col-lg-10 col-md-9 ms-auto main-content">
+        <!-- Dashboard View -->
+        <div id="dashboard-view" class="page-view fade-in">
+          <h2 class="mb-4">Dashboard de Línea de Producción</h2>
+          
+          <!-- Metrics Row -->
+          <div class="row mb-4">
+            <div class="col-md-4">
+              <div class="card metrics-card">
+                <h3 id="throughput">42</h3>
+                <p>Throughput (unid/hora)</p>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card metrics-card">
+                <h3 id="wip-total">18</h3>
+                <p>WIP Total</p>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card metrics-card">
+                <div class="d-flex justify-content-center align-items-center">
+                  <h3 id="cycle-time">58s</h3>
+                  <span class="ms-2 badge bg-success">vs 60s takt</span>
+                </div>
+                <p>Tiempo de Ciclo vs Takt</p>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Work Orders -->
+          <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <span>Órdenes de Trabajo Activas</span>
+              <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#newWorkOrderModal"><i class="fas fa-plus"></i> Nueva Orden</button>
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-6 col-lg-4 mb-3">
+                  <div class="card h-100">
+                    <div class="card-body">
+                      <h5 class="card-title">WO-0001</h5>
+                      <h6 class="card-subtitle mb-2 text-muted">Cámara A</h6>
+                      <div class="mt-3">
+                        <div class="d-flex justify-content-between mb-1">
+                          <span>Progreso:</span>
+                          <span>24/100</span>
+                        </div>
+                        <div class="progress">
+                          <div class="progress-bar" role="progressbar" style="width: 24%" aria-valuenow="24" aria-valuemin="0" aria-valuemax="100">24%</div>
+                        </div>
+                      </div>
+                      <div class="mt-3">
+                        <span class="badge bg-info">Running</span>
+                        <button class="btn btn-sm btn-outline-secondary float-end" data-order-id="WO-0001">Detalles</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6 col-lg-4 mb-3">
+                  <div class="card h-100">
+                    <div class="card-body">
+                      <h5 class="card-title">WO-0002</h5>
+                      <h6 class="card-subtitle mb-2 text-muted">Cámara B</h6>
+                      <div class="mt-3">
+                        <div class="d-flex justify-content-between mb-1">
+                          <span>Progreso:</span>
+                          <span>0/50</span>
+                        </div>
+                        <div class="progress">
+                          <div class="progress-bar" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                        </div>
+                      </div>
+                      <div class="mt-3">
+                        <span class="badge bg-secondary">Planned</span>
+                        <button class="btn btn-sm btn-outline-secondary float-end" data-order-id="WO-0002">Detalles</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Production Line Flow -->
+          <div class="card">
+            <div class="card-header">
+              <span>Línea de Producción L1 - Flujo en Tiempo Real</span>
+            </div>
+            <div class="card-body">
+              <div class="bay-flow">
+                <!-- Bay 1 -->
+                <div class="bay-item">
+                  <div class="card station-card status-ok">
+                    <div class="card-body">
+                      <h5 class="card-title">Bay 1: Recepción</h5>
+                      <div class="d-flex justify-content-between mb-2">
+                        <span>WIP:</span>
+                        <strong>3</strong>
+                      </div>
+                      <div class="d-flex justify-content-between mb-2">
+                        <span>Tiempo ciclo:</span>
+                        <strong>52s <span class="text-success"><i class="fas fa-arrow-down"></i></span></strong>
+                      </div>
+                      <div class="mt-3">
+                        <div class="d-flex align-items-center">
+                          <span class="status-badge status-ok"></span>
+                          <span>Normal</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Bay 2 -->
+                <div class="bay-item">
+                  <div class="card station-card status-warning">
+                    <div class="card-body">
+                      <h5 class="card-title">Bay 2: Subensamble</h5>
+                      <div class="d-flex justify-content-between mb-2">
+                        <span>WIP:</span>
+                        <strong>5</strong>
+                      </div>
+                      <div class="d-flex justify-content-between mb-2">
+                        <span>Tiempo ciclo:</span>
+                        <strong>65s <span class="text-warning"><i class="fas fa-arrow-up"></i></span></strong>
+                      </div>
+                      <div class="mt-3">
+                        <div class="d-flex align-items-center">
+                          <span class="status-badge status-warning"></span>
+                          <span>Rezago leve</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Bay 3 -->
+                <div class="bay-item">
+                  <div class="card station-card status-ok">
+                    <div class="card-body">
+                      <h5 class="card-title">Bay 3: Integración</h5>
+                      <div class="d-flex justify-content-between mb-2">
+                        <span>WIP:</span>
+                        <strong>4</strong>
+                      </div>
+                      <div class="d-flex justify-content-between mb-2">
+                        <span>Tiempo ciclo:</span>
+                        <strong>58s <span class="text-success"><i class="fas fa-check"></i></span></strong>
+                      </div>
+                      <div class="mt-3">
+                        <div class="d-flex align-items-center">
+                          <span class="status-badge status-ok"></span>
+                          <span>Normal</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Bay 4 -->
+                <div class="bay-item">
+                  <div class="card station-card status-danger">
+                    <div class="card-body">
+                      <h5 class="card-title">Bay 4: Test</h5>
+                      <div class="d-flex justify-content-between mb-2">
+                        <span>WIP:</span>
+                        <strong>6</strong>
+                      </div>
+                      <div class="d-flex justify-content-between mb-2">
+                        <span>Tiempo ciclo:</span>
+                        <strong>78s <span class="text-danger"><i class="fas fa-exclamation-circle"></i></span></strong>
+                      </div>
+                      <div class="mt-3">
+                        <div class="d-flex align-items-center">
+                          <span class="status-badge status-danger"></span>
+                          <span>Bloqueado</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Bay 5 -->
+                <div class="bay-item">
+                  <div class="card station-card status-ok">
+                    <div class="card-body">
+                      <h5 class="card-title">Bay 5: Cierre</h5>
+                      <div class="d-flex justify-content-between mb-2">
+                        <span>WIP:</span>
+                        <strong>0</strong>
+                      </div>
+                      <div class="d-flex justify-content-between mb-2">
+                        <span>Tiempo ciclo:</span>
+                        <strong>55s <span class="text-success"><i class="fas fa-arrow-down"></i></span></strong>
+                      </div>
+                      <div class="mt-3">
+                        <div class="d-flex align-items-center">
+                          <span class="status-badge status-ok"></span>
+                          <span>Normal</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Bay View -->
+        <div id="bay-view" class="page-view d-none fade-in">
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Vista de Bahía</h2>
+            <div>
+              <select class="form-select" id="bay-selector">
+                <option value="1">Bay 1: Recepción</option>
+                <option value="2" selected>Bay 2: Subensamble</option>
+                <option value="3">Bay 3: Integración</option>
+                <option value="4">Bay 4: Test</option>
+                <option value="5">Bay 5: Cierre</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="row">
+            <!-- Left Column: Units in Bay -->
+            <div class="col-md-6">
+              <div class="card">
+                <div class="card-header">
+                  <span>Unidades en Bay 2: Subensamble</span>
+                </div>
+                <div class="card-body">
+                  <div class="unit-scanner mb-4">
+                    <form>
+                      <div class="input-group">
+                        <input type="text" class="form-control" placeholder="Escanear Serial/Lote..." id="unit-scanner">
+                        <button class="btn btn-primary" type="submit"><i class="fas fa-barcode"></i></button>
+                      </div>
+                    </form>
+                  </div>
+                  
+                  <div class="units-list">
+                    <div class="unit-item status-working">
+                      <div class="d-flex justify-content-between">
+                        <strong>U0005</strong>
+                        <span class="badge bg-info">Working</span>
+                      </div>
+                      <small class="text-muted">Paso iniciado: hace 1m 20s</small>
+                    </div>
+                    
+                    <div class="unit-item status-ready">
+                      <div class="d-flex justify-content-between">
+                        <strong>U0006</strong>
+                        <span class="badge bg-secondary">Ready</span>
+                      </div>
+                      <small class="text-muted">Recibido: hace 5m</small>
+                    </div>
+                    
+                    <div class="unit-item status-ready">
+                      <div class="d-flex justify-content-between">
+                        <strong>U0007</strong>
+                        <span class="badge bg-secondary">Ready</span>
+                      </div>
+                      <small class="text-muted">Recibido: hace 5m</small>
+                    </div>
+                    
+                    <div class="unit-item status-rework">
+                      <div class="d-flex justify-content-between">
+                        <strong>U0008</strong>
+                        <span class="badge bg-purple">Rework</span>
+                      </div>
+                      <small class="text-muted">Retrabajo por: Error ensamble</small>
+                    </div>
+                    
+                    <div class="unit-item status-hold">
+                      <div class="d-flex justify-content-between">
+                        <strong>U0009</strong>
+                        <span class="badge bg-warning">Hold</span>
+                      </div>
+                      <small class="text-muted">Causa: Falta componente ABC-123</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="card mt-4">
+                <div class="card-header bg-light">
+                  <span>Acciones de la Bahía</span>
+                </div>
+                <div class="card-body">
+                  <div class="unit-action-form">
+                    <div class="mb-3">
+                      <label class="form-label">Serial/Lote Seleccionado</label>
+                      <input type="text" class="form-control" id="selected-unit" value="U0005" readonly>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                      <button class="btn btn-success flex-fill"><i class="fas fa-play"></i> Iniciar Paso</button>
+                      <button class="btn btn-primary flex-fill"><i class="fas fa-check"></i> Completar Paso</button>
+                      <button class="btn btn-info flex-fill"><i class="fas fa-arrow-right"></i> Mover a Siguiente</button>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="d-flex gap-2">
+                      <button class="btn btn-warning"><i class="fas fa-tools"></i> Marcar Retrabajo</button>
+                      <button class="btn btn-danger"><i class="fas fa-exclamation-triangle"></i> Reportar Problema</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Right Column: Work Instructions -->
+            <div class="col-md-6">
+              <div class="card">
+                <div class="card-header">
+                  <span>Instrucciones de Trabajo</span>
+                </div>
+                <div class="card-body">
+                  <h5>Step: Ensamble de componentes internos</h5>
+                  
+                  <div class="alert alert-info mt-3">
+                    <h6><i class="fas fa-info-circle"></i> Descripción</h6>
+                    <p>Este paso incluye el montaje de la placa PCB principal y los sensores en el chasis de la cámara.</p>
+                  </div>
+                  
+                  <div class="mt-4">
+                    <h6><i class="fas fa-list-ol"></i> Instrucciones</h6>
+                    <ol class="mt-2">
+                      <li>Verificar que el chasis esté libre de defectos.</li>
+                      <li>Colocar la placa PCB principal en los soportes.</li>
+                      <li>Asegurar con 4 tornillos T10 (torque: 0.8Nm).</li>
+                      <li>Conectar el cable plano del sensor.</li>
+                      <li>Verificar que el sensor esté alineado correctamente.</li>
+                    </ol>
+                  </div>
+                  
+                  <div class="mt-4">
+                    <h6><i class="fas fa-tools"></i> Herramientas Requeridas</h6>
+                    <ul class="list-group">
+                      <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Destornillador Torx T10
+                        <span class="badge bg-success">✓</span>
+                      </li>
+                      <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Torquímetro calibrado
+                        <span class="badge bg-success">✓</span>
+                      </li>
+                    </ul>
+                  </div>
+                  
+                  <div class="mt-4">
+                    <h6><i class="fas fa-boxes"></i> Partes Requeridas</h6>
+                    <div class="table-responsive">
+                      <table class="table table-sm">
+                        <thead>
+                          <tr>
+                            <th>Parte #</th>
+                            <th>Descripción</th>
+                            <th>Cantidad</th>
+                            <th>Estado</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td>PCB-001</td>
+                            <td>Placa PCB Principal</td>
+                            <td>1</td>
+                            <td><span class="badge bg-success">Disponible</span></td>
+                          </tr>
+                          <tr>
+                            <td>SNS-A32</td>
+                            <td>Sensor de Imagen</td>
+                            <td>1</td>
+                            <td><span class="badge bg-success">Disponible</span></td>
+                          </tr>
+                          <tr>
+                            <td>SCR-T10</td>
+                            <td>Tornillo T10 3x8mm</td>
+                            <td>4</td>
+                            <td><span class="badge bg-success">Disponible</span></td>
+                          </tr>
+                          <tr>
+                            <td>CBL-F15</td>
+                            <td>Cable plano 15 pines</td>
+                            <td>1</td>
+                            <td><span class="badge bg-success">Disponible</span></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  
+                  <div class="mt-4">
+                    <h6><i class="fas fa-check-square"></i> Criterios de Aceptación</h6>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" value="" id="check1">
+                      <label class="form-check-label" for="check1">
+                        Placa asegurada sin movimiento
+                      </label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" value="" id="check2">
+                      <label class="form-check-label" for="check2">
+                        Cable plano correctamente insertado
+                      </label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" value="" id="check3">
+                      <label class="form-check-label" for="check3">
+                        Sensor alineado con la marca de referencia
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Work Order View -->
+        <div id="work-order-view" class="page-view d-none fade-in">
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Detalle de Work Order</h2>
+            <div>
+              <select class="form-select" id="wo-selector">
+                <option value="WO-0001" selected>WO-0001 - Cámara A</option>
+                <option value="WO-0002">WO-0002 - Cámara B</option>
+              </select>
+            </div>
+          </div>
+          
+          <!-- Work Order Header -->
+          <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+              <span>Work Order: WO-0001 - Cámara A</span>
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-6">
+                  <table class="table table-sm">
+                    <tbody>
+                      <tr>
+                        <th scope="row">Modelo</th>
+                        <td>Cámara A</td>
+                      </tr>
+                      <tr>
+                        <th scope="row">Objetivo</th>
+                        <td>100 unidades</td>
+                      </tr>
+                      <tr>
+                        <th scope="row">Fecha Inicio</th>
+                        <td>15/06/2025 08:00</td>
+                      </tr>
+                      <tr>
+                        <th scope="row">Fecha Entrega</th>
+                        <td>18/06/2025 17:00</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="col-md-6">
+                  <table class="table table-sm">
+                    <tbody>
+                      <tr>
+                        <th scope="row">Status</th>
+                        <td><span class="badge bg-info">Running</span></td>
+                      </tr>
+                      <tr>
+                        <th scope="row">Producidas</th>
+                        <td>24 unidades</td>
+                      </tr>
+                      <tr>
+                        <th scope="row">Entregadas</th>
+                        <td>20 unidades</td>
+                      </tr>
+                      <tr>
+                        <th scope="row">Yield</th>
+                        <td>96% <span class="badge bg-success">24/25</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div class="row mt-3">
+                <div class="col">
+                  <div class="progress" style="height: 25px">
+                    <div class="progress-bar" role="progressbar" style="width: 24%" aria-valuenow="24" aria-valuemin="0" aria-valuemax="100">
+                      24% (24/100)
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Tabs Navigation -->
+          <ul class="nav nav-tabs" id="wo-tabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="timeline-tab" data-bs-toggle="tab" data-bs-target="#timeline" type="button" role="tab">Timeline</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="deliveries-tab" data-bs-toggle="tab" data-bs-target="#deliveries" type="button" role="tab">Deliveries</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="metrics-tab" data-bs-toggle="tab" data-bs-target="#metrics" type="button" role="tab">Métricas</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="nonconf-tab" data-bs-toggle="tab" data-bs-target="#nonconf" type="button" role="tab">No Conformidades</button>
+            </li>
+          </ul>
+          
+          <!-- Tab Content -->
+          <div class="tab-content" id="wo-tab-content">
+            <!-- Timeline Tab -->
+            <div class="tab-pane fade show active" id="timeline" role="tabpanel">
+              <div class="card border-top-0">
+                <div class="card-body">
+                  <h5 class="card-title">Timeline de Producción</h5>
+                  
+                  <!-- Gantt Chart -->
+                  <div class="gantt-chart">
+                    <div class="mb-2">
+                      <div class="d-flex">
+                        <div style="width: 100px"></div>
+                        <div class="flex-grow-1 d-flex justify-content-between px-2">
+                          <span>Bay 1</span>
+                          <span>Bay 2</span>
+                          <span>Bay 3</span>
+                          <span>Bay 4</span>
+                          <span>Bay 5</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- Unit Rows -->
+                    <div class="gantt-row">
+                      <div class="gantt-row-label">U0001</div>
+                      <div class="gantt-row-bars">
+                        <div class="gantt-bar gantt-bar-step" style="left: 0%; width: 20%;"></div>
+                        <div class="gantt-bar gantt-bar-step" style="left: 20%; width: 20%;"></div>
+                        <div class="gantt-bar gantt-bar-step" style="left: 40%; width: 20%;"></div>
+                        <div class="gantt-bar gantt-bar-step" style="left: 60%; width: 20%;"></div>
+                        <div class="gantt-bar gantt-bar-step" style="left: 80%; width: 20%;"></div>
+                      </div>
+                    </div>
+                    
+                    <div class="gantt-row">
+                      <div class="gantt-row-label">U0002</div>
+                      <div class="gantt-row-bars">
+                        <div class="gantt-bar gantt-bar-step" style="left: 0%; width: 20%;"></div>
+                        <div class="gantt-bar gantt-bar-step" style="left: 20%; width: 20%;"></div>
+                        <div class="gantt-bar gantt-bar-step" style="left: 40%; width: 20%;"></div>
+                        <div class="gantt-bar gantt-bar-step" style="left: 60%; width: 20%;"></div>
+                        <div class="gantt-bar gantt-bar-step" style="left: 80%; width: 20%;"></div>
+                      </div>
+                    </div>
+                    
+                    <div class="gantt-row">
+                      <div class="gantt-row-label">U0003</div>
+                      <div class="gantt-row-bars">
+                        <div class="gantt-bar gantt-bar-step" style="left: 0%; width: 20%;"></div>
+                        <div class="gantt-bar gantt-bar-step" style="left: 20%; width: 20%;"></div>
+                        <div class="gantt-bar gantt-bar-step" style="left: 40%; width: 20%;"></div>
+                        <div class="gantt-bar gantt-bar-step" style="left: 60%; width: 20%;"></div>
+                        <div class="gantt-bar gantt-bar-step" style="left: 80%; width: 20%;"></div>
+                      </div>
+                    </div>
+                    
+                    <div class="gantt-row">
+                      <div class="gantt-row-label">U0004</div>
+                      <div class="gantt-row-bars">
+                        <div class="gantt-bar gantt-bar-step" style="left: 0%; width: 20%;"></div>
+                        <div class="gantt-bar gantt-bar-step" style="left: 20%; width: 20%;"></div>
+                        <div class="gantt-bar gantt-bar-step" style="left: 40%; width: 20%;"></div>
+                        <div class="gantt-bar gantt-bar-rework" style="left: 60%; width: 5%;"></div>
+                        <div class="gantt-bar gantt-bar-step" style="left: 65%; width: 15%;"></div>
+                        <div class="gantt-bar gantt-bar-step" style="left: 80%; width: 20%;"></div>
+                      </div>
+                    </div>
+                    
+                    <div class="gantt-row">
+                      <div class="gantt-row-label">U0005</div>
+                      <div class="gantt-row-bars">
+                        <div class="gantt-bar gantt-bar-step" style="left: 0%; width: 20%;"></div>
+                        <div class="gantt-bar gantt-bar-step" style="left: 20%; width: 20%;"></div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Latest Activities -->
+                  <h5 class="mt-5">Actividades Recientes</h5>
+                  <div class="timeline">
+                    <div class="timeline-item done">
+                      <div class="card">
+                        <div class="card-body p-3">
+                          <div class="d-flex justify-content-between">
+                            <h6 class="card-title mb-1">U0005 completó Bay 2: Subensamble</h6>
+                            <small class="text-muted">Hace 15 minutos</small>
+                          </div>
+                          <p class="card-text text-muted">Operador: Juan Pérez</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="timeline-item done">
+                      <div class="card">
+                        <div class="card-body p-3">
+                          <div class="d-flex justify-content-between">
+                            <h6 class="card-title mb-1">U0004 completó Bay 5: Cierre</h6>
+                            <small class="text-muted">Hace 25 minutos</small>
+                          </div>
+                          <p class="card-text text-muted">Operador: María García</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="timeline-item rework">
+                      <div class="card">
+                        <div class="card-body p-3">
+                          <div class="d-flex justify-content-between">
+                            <h6 class="card-title mb-1">U0008 marcado para retrabajo en Bay 2</h6>
+                            <small class="text-muted">Hace 45 minutos</small>
+                          </div>
+                          <p class="card-text">Causa: Error en ensamble de PCB</p>
+                          <p class="card-text text-muted">Operador: Luis Rodríguez</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Deliveries Tab -->
+            <div class="tab-pane fade" id="deliveries" role="tabpanel">
+              <div class="card border-top-0">
+                <div class="card-body">
+                  <div class="row">
+                    <div class="col-md-5">
+                      <h5 class="card-title">Registrar Entrega</h5>
+                      <form>
+                        <div class="mb-3">
+                          <label for="delivery-qty" class="form-label">Cantidad</label>
+                          <input type="number" class="form-control" id="delivery-qty" min="1" max="100">
+                        </div>
+                        <div class="mb-3">
+                          <label for="delivery-evidence" class="form-label">Referencia/Evidencia</label>
+                          <input type="text" class="form-control" id="delivery-evidence" placeholder="Ej: Guía de remisión #123456">
+                        </div>
+                        <div class="mb-3">
+                          <label for="delivery-notes" class="form-label">Notas</label>
+                          <textarea class="form-control" id="delivery-notes" rows="3"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Registrar Entrega</button>
+                      </form>
+                    </div>
+                    <div class="col-md-7">
+                      <h5 class="card-title">Historial de Entregas</h5>
+                      <div class="table-responsive">
+                        <table class="table table-hover">
+                          <thead>
+                            <tr>
+                              <th>Fecha</th>
+                              <th>Cantidad</th>
+                              <th>Usuario</th>
+                              <th>Evidencia</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td>15/06/2025 14:30</td>
+                              <td>10</td>
+                              <td>Juan Pérez</td>
+                              <td>Guía #89721</td>
+                            </tr>
+                            <tr>
+                              <td>16/06/2025 09:15</td>
+                              <td>5</td>
+                              <td>María García</td>
+                              <td>Guía #89722</td>
+                            </tr>
+                            <tr>
+                              <td>16/06/2025 16:40</td>
+                              <td>5</td>
+                              <td>Luis Rodríguez</td>
+                              <td>Guía #89723</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                      
+                      <!-- Reconciliation -->
+                      <div class="card mt-4 bg-light">
+                        <div class="card-body">
+                          <h5 class="card-title">Reconciliación</h5>
+                          <div class="row">
+                            <div class="col-md-4 text-center">
+                              <h3>24</h3>
+                              <p>Producidas</p>
+                            </div>
+                            <div class="col-md-4 text-center">
+                              <h3>20</h3>
+                              <p>Entregadas</p>
+                            </div>
+                            <div class="col-md-4 text-center">
+                              <h3 class="text-warning">4</h3>
+                              <p>Diferencia</p>
+                            </div>
+                          </div>
+                          <div class="alert alert-warning mt-3">
+                            <i class="fas fa-exclamation-triangle"></i> No se puede cerrar la orden hasta que la reconciliación cuadre.
+                          </div>
+                          <button class="btn btn-secondary" disabled>Cerrar Orden</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Metrics Tab -->
+            <div class="tab-pane fade" id="metrics" role="tabpanel">
+              <div class="card border-top-0">
+                <div class="card-body">
+                  <h5 class="card-title">Métricas de la Orden</h5>
+                  
+                  <div class="row mb-4">
+                    <div class="col-md-6">
+                      <div class="card">
+                        <div class="card-body">
+                          <h6 class="card-subtitle mb-2 text-muted">Throughput por Hora</h6>
+                          <canvas id="throughputChart" height="200"></canvas>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="card">
+                        <div class="card-body">
+                          <h6 class="card-subtitle mb-2 text-muted">Tiempo de Ciclo vs Takt</h6>
+                          <canvas id="cycleTimeChart" height="200"></canvas>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="row">
+                    <div class="col-md-6">
+                      <div class="card">
+                        <div class="card-body">
+                          <h6 class="card-subtitle mb-2 text-muted">WIP por Bahía</h6>
+                          <canvas id="wipChart" height="200"></canvas>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="card">
+                        <div class="card-body">
+                          <h6 class="card-subtitle mb-2 text-muted">Yield y Retrabajo</h6>
+                          <canvas id="yieldChart" height="200"></canvas>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Non Conformities Tab -->
+            <div class="tab-pane fade" id="nonconf" role="tabpanel">
+              <div class="card border-top-0">
+                <div class="card-body">
+                  <div class="row">
+                    <div class="col-md-5">
+                      <h5 class="card-title">Registrar No Conformidad</h5>
+                      <form>
+                        <div class="mb-3">
+                          <label for="nc-unit" class="form-label">Unidad/Serial</label>
+                          <input type="text" class="form-control" id="nc-unit">
+                        </div>
+                        <div class="mb-3">
+                          <label for="nc-bay" class="form-label">Bahía</label>
+                          <select class="form-select" id="nc-bay">
+                            <option value="1">Bay 1: Recepción</option>
+                            <option value="2">Bay 2: Subensamble</option>
+                            <option value="3">Bay 3: Integración</option>
+                            <option value="4">Bay 4: Test</option>
+                            <option value="5">Bay 5: Cierre</option>
+                          </select>
+                        </div>
+                        <div class="mb-3">
+                          <label for="nc-code" class="form-label">Código</label>
+                          <input type="text" class="form-control" id="nc-code">
+                        </div>
+                        <div class="mb-3">
+                          <label for="nc-description" class="form-label">Descripción</label>
+                          <textarea class="form-control" id="nc-description" rows="3"></textarea>
+                        </div>
+                        <div class="mb-3">
+                          <label class="form-label">Disposición</label>
+                          <div class="form-check">
+                            <input class="form-check-input" type="radio" name="nc-disposition" id="disp-rework" checked>
+                            <label class="form-check-label" for="disp-rework">
+                              Retrabajo
+                            </label>
+                          </div>
+                          <div class="form-check">
+                            <input class="form-check-input" type="radio" name="nc-disposition" id="disp-scrap">
+                            <label class="form-check-label" for="disp-scrap">
+                              Scrap
+                            </label>
+                          </div>
+                          <div class="form-check">
+                            <input class="form-check-input" type="radio" name="nc-disposition" id="disp-use">
+                            <label class="form-check-label" for="disp-use">
+                              Usar como está
+                            </label>
+                          </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Registrar</button>
+                      </form>
+                    </div>
+                    <div class="col-md-7">
+                      <h5 class="card-title">No Conformidades Registradas</h5>
+                      <div class="table-responsive">
+                        <table class="table table-hover">
+                          <thead>
+                            <tr>
+                              <th>Unidad</th>
+                              <th>Bahía</th>
+                              <th>Código</th>
+                              <th>Disposición</th>
+                              <th>Fecha</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td>U0008</td>
+                              <td>Bay 2</td>
+                              <td>PCB-MAL</td>
+                              <td><span class="badge bg-purple">Retrabajo</span></td>
+                              <td>16/06/2025 11:45</td>
+                            </tr>
+                            <tr>
+                              <td>U0004</td>
+                              <td>Bay 4</td>
+                              <td>TEST-FAIL</td>
+                              <td><span class="badge bg-purple">Retrabajo</span></td>
+                              <td>15/06/2025 16:30</td>
+                            </tr>
+                            <tr>
+                              <td>U0010</td>
+                              <td>Bay 1</td>
+                              <td>CHAS-CRACK</td>
+                              <td><span class="badge bg-danger">Scrap</span></td>
+                              <td>15/06/2025 09:15</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                      
+                      <!-- Summary -->
+                      <div class="card mt-4 bg-light">
+                        <div class="card-body">
+                          <h5 class="card-title">Resumen</h5>
+                          <div class="row text-center">
+                            <div class="col">
+                              <h3>3</h3>
+                              <p>Total NC</p>
+                            </div>
+                            <div class="col">
+                              <h3>2</h3>
+                              <p>Retrabajo</p>
+                            </div>
+                            <div class="col">
+                              <h3>1</h3>
+                              <p>Scrap</p>
+                            </div>
+                            <div class="col">
+                              <h3>0</h3>
+                              <p>Usar como está</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Configuration View -->
+        <div id="configuration-view" class="page-view d-none fade-in">
+          <h2 class="mb-4">Configuración del Sistema</h2>
+          
+          <!-- Tabs Navigation -->
+          <ul class="nav nav-tabs" id="config-tabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="lines-tab" data-bs-toggle="tab" data-bs-target="#lines" type="button" role="tab">Líneas</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="bays-tab" data-bs-toggle="tab" data-bs-target="#bays" type="button" role="tab">Bahías</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="products-tab" data-bs-toggle="tab" data-bs-target="#products" type="button" role="tab">Modelos</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="steps-tab" data-bs-toggle="tab" data-bs-target="#steps" type="button" role="tab">Pasos</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="bom-tab" data-bs-toggle="tab" data-bs-target="#bom" type="button" role="tab">BOM</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="users-tab" data-bs-toggle="tab" data-bs-target="#users" type="button" role="tab">Usuarios</button>
+            </li>
+          </ul>
+          
+          <!-- Tab Content -->
+          <div class="tab-content" id="config-tab-content">
+            <!-- Lines Tab -->
+            <div class="tab-pane fade show active" id="lines" role="tabpanel">
+              <div class="card border-top-0">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between mb-4">
+                    <h5 class="card-title">Líneas de Producción</h5>
+                    <button class="btn btn-primary"><i class="fas fa-plus"></i> Nueva Línea</button>
+                  </div>
+                  
+                  <div class="table-responsive">
+                    <table class="table table-hover config-table">
+                      <thead>
+                        <tr>
+                          <th>ID</th>
+                          <th>Nombre</th>
+                          <th>Código</th>
+                          <th>Bahías</th>
+                          <th>Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>1</td>
+                          <td>Línea Principal</td>
+                          <td>L1</td>
+                          <td>5</td>
+                          <td>
+                            <div class="btn-group">
+                              <button class="btn btn-sm btn-outline-secondary"><i class="fas fa-edit"></i></button>
+                              <button class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
+                            </div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>2</td>
+                          <td>Línea Secundaria</td>
+                          <td>L2</td>
+                          <td>3</td>
+                          <td>
+                            <div class="btn-group">
+                              <button class="btn btn-sm btn-outline-secondary"><i class="fas fa-edit"></i></button>
+                              <button class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
+                            </div>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Bays Tab -->
+            <div class="tab-pane fade" id="bays" role="tabpanel">
+              <div class="card border-top-0">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between mb-4">
+                    <h5 class="card-title">Bahías</h5>
+                    <button class="btn btn-primary"><i class="fas fa-plus"></i> Nueva Bahía</button>
+                  </div>
+                  
+                  <div class="table-responsive">
+                    <table class="table table-hover config-table">
+                      <thead>
+                        <tr>
+                          <th>ID</th>
+                          <th>Nombre</th>
+                          <th>Línea</th>
+                          <th>Secuencia</th>
+                          <th>Capacidad</th>
+                          <th>Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>1</td>
+                          <td>Recepción</td>
+                          <td>L1</td>
+                          <td>1</td>
+                          <td>5</td>
+                          <td>
+                            <div class="btn-group">
+                              <button class="btn btn-sm btn-outline-secondary"><i class="fas fa-edit"></i></button>
+                              <button class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
+                            </div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>2</td>
+                          <td>Subensamble</td>
+                          <td>L1</td>
+                          <td>2</td>
+                          <td>5</td>
+                          <td>
+                            <div class="btn-group">
+                              <button class="btn btn-sm btn-outline-secondary"><i class="fas fa-edit"></i></button>
+                              <button class="btn btn-sm.btn-outline-danger"><i class="fas fa-trash"></i></button>
+                            </div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>3</td>
+                          <td>Integración</td>
+                          <td>L1</td>
+                          <td>3</td>
+                          <td>3</td>
+                          <td>
+                            <div class="btn-group">
+                              <button class="btn btn-sm btn-outline-secondary"><i class="fas fa-edit"></i></button>
+                              <button class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
+                            </div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>4</td>
+                          <td>Test</td>
+                          <td>L1</td>
+                          <td>4</td>
+                          <td>3</td>
+                          <td>
+                            <div class="btn-group">
+                              <button class="btn btn-sm btn-outline-secondary"><i class="fas fa-edit"></i></button>
+                              <button class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
+                            </div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>5</td>
+                          <td>Cierre</td>
+                          <td>L1</td>
+                          <td>5</td>
+                          <td>5</td>
+                          <td>
+                            <div class="btn-group">
+                              <button class="btn btn-sm.btn-outline-secondary"><i class="fas fa-edit"></i></button>
+                              <button class="btn btn-sm.btn-outline-danger"><i class="fas fa-trash"></i></button>
+                            </div>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Products Tab -->
+            <div class="tab-pane fade" id="products" role="tabpanel">
+              <div class="card border-top-0">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between mb-4">
+                    <h5 class="card-title">Modelos de Producto</h5>
+                    <button class="btn btn-primary"><i class="fas fa-plus"></i> Nuevo Modelo</button>
+                  </div>
+                  
+                  <div class="table-responsive">
+                    <table class="table table-hover config-table">
+                      <thead>
+                        <tr>
+                          <th>ID</th>
+                          <th>Nombre</th>
+                          <th>Código</th>
+                          <th>Revisión</th>
+                          <th>Takt (s)</th>
+                          <th>Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>1</td>
+                          <td>Cámara A</td>
+                          <td>CAM-A</td>
+                          <td>1.0</td>
+                          <td>60</td>
+                          <td>
+                            <div class="btn-group">
+                              <button class="btn btn-sm.btn-outline-secondary"><i class="fas fa-edit"></i></button>
+                              <button class="btn btn-sm.btn-outline-danger"><i class="fas fa-trash"></i></button>
+                            </div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>2</td>
+                          <td>Cámara B</td>
+                          <td>CAM-B</td>
+                          <td>1.2</td>
+                          <td>75</td>
+                          <td>
+                            <div class="btn btn-sm.btn-outline-secondary"><i class="fas fa-edit"></i></div><div class="btn btn-sm.btn-outline-danger"><i class="fas fa-trash"></i></div>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Steps Tab -->
+            <div class="tab-pane fade" id="steps" role="tabpanel">
+              <div class="card border-top-0">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between mb-4">
+                    <h5 class="card-title">Pasos de Producción</h5>
+                    <button class="btn btn-primary"><i class="fas fa-plus"></i> Nuevo Paso</button>
+                  </div>
+                  
+                  <div class="mb-3">
+                    <label class="form-label">Filtrar por Modelo:</label>
+                    <select class="form-select w-auto">
+                      <option value="1" selected>Cámara A</option>
+                      <option value="2">Cámara B</option>
+                    </select>
+                  </div>
+                  
+                  <div class="table-responsive">
+                    <table class="table table-hover config-table">
+                      <thead>
+                        <tr>
+                          <th>ID</th>
+                          <th>Nombre</th>
+                          <th>Bahía</th>
+                          <th>Secuencia</th>
+                          <th>Partes Req.</th>
+                          <th>Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>1</td>
+                          <td>Recepción de materiales</td>
+                          <td>Bay 1: Recepción</td>
+                          <td>1</td>
+                          <td>3</td>
+                          <td>
+                            <div class="btn-group">
+                              <button class="btn btn-sm.btn-outline-secondary"><i class="fas fa-edit"></i></button>
+                              <button class="btn btn-sm.btn-outline-danger"><i class="fas fa-trash"></i></button>
+                            </div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>2</td>
+                          <td>Ensamble de componentes internos</td>
+                          <td>Bay 2: Subensamble</td>
+                          <td>1</td>
+                          <td>4</td>
+                          <td>
+                            <div class="btn btn-sm.btn-outline-secondary"><i class="fas fa-edit"></i></div><div class="btn btn-sm.btn-outline-danger"><i class="fas fa-trash"></i></div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>3</td>
+                          <td>Integración de sensor y óptica</td>
+                          <td>Bay 3: Integración</td>
+                          <td>1</td>
+                          <td>2</td>
+                          <td>
+                            <div class="btn btn-sm.btn-outline-secondary"><i class="fas fa-edit"></i></div><div class="btn btn-sm.btn-outline-danger"><i class="fas fa-trash"></i></div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>4</td>
+                          <td>Test funcional</td>
+                          <td>Bay 4: Test</td>
+                          <td>1</td>
+                          <td>0</td>
+                          <td>
+                            <div class="btn btn-sm.btn-outline-secondary"><i class="fas fa-edit"></i></div><div class="btn btn-sm.btn-outline-danger"><i class="fas fa-trash"></i></div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>5</td>
+                          <td>Cierre y empaque</td>
+                          <td>Bay 5: Cierre</td>
+                          <td>1</td>
+                          <td>2</td>
+                          <td>
+                            <div class="btn btn-sm.btn-outline-secondary"><i class="fas fa-edit"></i></div><div class="btn btn-sm.btn-outline-danger"><i class="fas fa-trash"></i></div>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- BOM Tab -->
+            <div class="tab-pane fade" id="bom" role="tabpanel">
+              <div class="card border-top-0">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between mb-4">
+                    <h5 class="card-title">BOM Items</h5>
+                    <button class="btn btn-primary"><i class="fas fa-plus"></i> Nuevo Item</button>
+                  </div>
+                  
+                  <div class="mb-3">
+                    <label class="form-label">Filtrar por Modelo:</label>
+                    <select class="form-select w-auto">
+                      <option value="1" selected>Cámara A</option>
+                      <option value="2">CáMaria B</option>
+                    </select>
+                  </div>
+                  
+                  <div class="table-responsive">
+                    <table class="table table-hover config-table">
+                      <thead>
+                        <tr>
+                          <th>ID</th>
+                          <th>Número de Parte</th>
+                          <th>Descripción</th>
+                          <th>Cantidad por Unidad</th>
+                          <th>Bahía Sugerida</th>
+                          <th>Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>1</td>
+                          <td>PCB-001</td>
+                          <td>Placa PCB Principal</td>
+                          <td>1</td>
+                          <td>Bay 2</td>
+                          <td>
+                            <div class="btn btn-sm.btn-outline-secondary"><i class="fas fa-edit"></i></div><div class="btn btn-sm.btn-outline-danger"><i class="fas fa-trash"></i></div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>2</td>
+                          <td>SNS-A32</td>
+                          <td>Sensor de Imagen</td>
+                          <td>1</td>
+                          <td>Bay 2</td>
+                          <td>
+                            <div class="btn btn-sm.btn-outline-secondary"><i class="fas fa-edit"></i></div><div class="btn btn-sm.btn-outline-danger"><i class="fas fa-trash"></i></div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>3</td>
+                          <td>LENS-B50</td>
+                          <td>Lente 50mm</td>
+                          <td>1</td>
+                          <td>Bay 3</td>
+                          <td>
+                            <div class="btn btn-sm.btn-outline-secondary"><i class="fas fa-edit"></i></div><div class="btn btn-sm.btn-outline-danger"><i class="fas fa-trash"></i></div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>4</td>
+                          <td>CHAS-M1</td>
+                          <td>Chasis Metálico</td>
+                          <td>1</td>
+                          <td>Bay 1</td>
+                          <td>
+                            <div class="btn btn-sm.btn-outline-secondary"><i class="fas fa-edit"></i></div><div class="btn btn-sm.btn-outline-danger"><i class="fas fa-trash"></i></div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>5</td>
+                          <td>BAT-LI</td>
+                          <td>Batería de Litio</td>
+                          <td>1</td>
+                          <td>Bay 3</td>
+                          <td>
+                            <div class="btn btn-sm.btn-outline-secondary"><i class="fas fa-edit"></i></div><div class="btn btn-sm.btn-outline-danger"><i class="fas fa-trash"></i></div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>6</td>
+                          <td>SCR-T10</td>
+                          <td>Tornillos T10 3x8mm</td>
+                          <td>12</td>
+                          <td>Bay 2, Bay 5</td>
+                          <td>
+                            <div class="btn btn-sm.btn-outline-secondary"><i class="fas fa-edit"></i></div><div class="btn btn-sm.btn-outline-danger"><i class="fas fa-trash"></i></div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>7</td>
+                          <td>CBL-F15</td>
+                          <td>Cable plano 15 pines</td>
+                          <td>2</td>
+                          <td>Bay 2</td>
+                          <td>
+                            <div class="btn btn-sm.btn-outline-secondary"><i class="fas fa-edit"></i></div><div class="btn btn-sm.btn-outline-danger"><i class="fas fa-trash"></i></div>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Users Tab -->
+            <div class="tab-pane fade" id="users" role="tabpanel">
+              <div class="card border-top-0">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between mb-4">
+                    <h5 class="card-title">Usuarios</h5>
+                    <button class="btn btn-primary"><i class="fas fa-plus"></i> Nuevo Usuario</button>
+                  </div>
+                  
+                  <div class="table-responsive">
+                    <table class="table table-hover config-table">
+                      <thead>
+                        <tr>
+                          <th>ID</th>
+                          <th>Nombre</th>
+                          <th>Usuario</th>
+                          <th>Rol</th>
+                          <th>Estado</th>
+                          <th>Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>1</td>
+                          <td>Juan Pérez</td>
+                          <td>jperez</td>
+                          <td>Operador</td>
+                          <td><span class="badge bg-success">Activo</span></td>
+                          <td>
+                            <div class="btn btn-sm.btn-outline-secondary"><i class="fas fa-edit"></i></div><div class="btn btn-sm.btn-outline-danger"><i class="fas fa-trash"></i></div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>2</td>
+                          <td>María García</td>
+                          <td>mgarcia</td>
+                          <td>Supervisor</td>
+                          <td><span class="badge bg-success">Activo</span></td>
+                          <td>
+                            <div class="btn btn-sm.btn-outline-secondary"><i class="fas fa-edit"></i></div><div class="btn btn-sm.btn-outline-danger"><i class="fas fa-trash"></i></div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>3</td>
+                          <td>Luis Rodríguez</td>
+                          <td>lrodriguez</td>
+                          <td>Operador</td>
+                          <td><span class="badge bg-success">Activo</span></td>
+                          <td>
+                            <div class="btn btn-sm.btn-outline-secondary"><i class="fas fa-edit"></i></div><div class="btn btn-sm.btn-outline-danger"><i class="fas fa-trash"></i></div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>4</td>
+                          <td>Ana Martínez</td>
+                          <td>amartinez</td>
+                          <td>Admin</td>
+                          <td><span class="badge bg-success">Activo</span></td>
+                          <td>
+                            <div class="btn btn-sm.btn-outline-secondary"><i class="fas fa-edit"></i></div><div class="btn btn-sm.btn-outline-danger"><i class="fas fa-trash"></i></div>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>  
+    </div>
+  </div>
+
+  <!-- Toasts container -->
+  <div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="successToast" class="toast align-items-center text-white bg-success" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body">
+          <i class="fas fa-check-circle me-2"></i> <span id="success-message">Operación completada con éxito.</span>
+        </div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+    </div>
+    <div id="errorToast" class="toast align-items-center text-white bg-danger" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body">
+          <i class="fas fa-exclamation-circle me-2"></i> <span id="error-message">Ha ocurrido un error.</span>
+        </div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="newWorkOrderModal" tabindex="-1" aria-labelledby="newWorkOrderModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="newWorkOrderModalLabel">Nueva Orden de Trabajo</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="newWorkOrderForm">
+            <div class="mb-3">
+              <label for="wo-model" class="form-label">Modelo</label>
+              <select class="form-select" id="wo-model" required>
+                <option value="">Seleccione un modelo...</option>
+                <option value="CAM-A">Cámara A</option>
+                <option value="CAM-B">Cámara B</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="wo-line" class="form-label">Línea</label>
+              <select class="form-select" id="wo-line" required>
+                <option value="">Seleccione una línea...</option>
+                <option value="L1">L1 - Línea Principal</option>
+                <option value="L2">L2 - Línea Secundaria</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="wo-quantity" class="form-label">Cantidad</label>
+              <input type="number" class="form-control" id="wo-quantity" min="1" max="1000" required>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="saveWorkOrder">Crear Orden</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script id="app-script">
+  // Magic Loops API Configuration
+  const LOOPS_CONFIG = {
+    baseUrl: 'https://api.magicloops.dev/v1',
+    endpoints: {
+      getState: '/get_state',
+      seedDemo: '/seed_demo',
+      createWorkOrder: '/create_work_order',
+      startStep: '/start_step',
+      completeStep: '/complete_step',
+      moveNext: '/move_next',
+      recordDelivery: '/record_delivery',
+      closeWorkOrder: '/close_work_order',
+      recomputeMetrics: '/recompute_metrics'
+    },
+    apiKey: 'YOUR_REAL_API_KEY',
+    storeKey: 'mes_state'
+  };
+
+  // Helper function callLoop
+  function callLoop(endpoint, data = {}) {
+    const url = LOOPS_CONFIG.baseUrl + LOOPS_CONFIG.endpoints[endpoint];
+    const headers = {
+      'Content-Type': 'application/json',
+      'X-API-Key': LOOPS_CONFIG.apiKey,
+      'X-Store-Key': LOOPS_CONFIG.storeKey
+    };
+
+    return fetch(url, {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify(data)
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    })
+    .catch(error => {
+      console.error('Error in callLoop:', error);
+      throw error;
+    });
+  }
+
+  // State management
+  let appState = {
+    workOrders: [],
+    units: [],
+    transactions: [],
+    metrics: {},
+    bayFlow: [],
+    selectedWorkOrder: null,
+    selectedBay: null,
+    selectedUnit: null,
+    isLoading: false
+  };
+
+  // Set loading state
+  function setLoading(isLoading) {
+    appState.isLoading = isLoading;
+    const loadingOverlay = document.getElementById('loading-overlay');
+    if (isLoading) {
+      if (!loadingOverlay) {
+        const overlay = document.createElement('div');
+        overlay.id = 'loading-overlay';
+        overlay.className = 'position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-dark bg-opacity-50';
+        overlay.style.zIndex = '9999';
+        overlay.innerHTML = `
+          <div class="spinner-border text-light" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+        `;
+        document.body.appendChild(overlay);
+      }
+    } else if (loadingOverlay) {
+      loadingOverlay.remove();
+    }
+  }
+
+  // Polling and state updates
+  async function fetchStateAndUpdateUI() {
+    try {
+      setLoading(true);
+      const response = await callLoop('getState');
+      if (response.status === 'success') {
+        // Update application state
+        appState.workOrders = response.data.workOrders || [];
+        appState.units = response.data.units || [];
+        appState.transactions = response.data.transactions || [];
+        appState.bayFlow = response.data.bayFlow || [];
+        
+        // Recompute metrics
+        const metricsResponse = await callLoop('recomputeMetrics');
+        if (metricsResponse.status === 'success') {
+          appState.metrics = metricsResponse.data.metrics || {};
+        }
+        
+        // Update UI components
+        updateDashboardUI();
+        updateBayFlowDisplay();
+        updateBayViewUI();
+        updateWorkOrderUI();
+        
+        setLoading(false);
+      } else {
+        throw new Error(response.message || 'Failed to fetch state');
+      }
+    } catch (error) {
+      console.error('Error fetching state:', error);
+      showErrorToast('Error al cargar datos: ' + error.message);
+      setLoading(false);
+    }
+  }
+
+  function startPolling() {
+    fetchStateAndUpdateUI();
+    setTimeout(startPolling, 7000);
+  }
+
+  // UI update functions
+  function updateDashboardUI() {
+    // Update metrics
+    const throughput = appState.metrics.throughput || 0;
+    const cycleTime = appState.metrics.cycleTime || 0;
+    const wip = appState.metrics.wip || 0;
+    
+    const throughputEl = document.getElementById('throughput');
+    if (throughputEl) {
+      throughputEl.textContent = throughput;
+    }
+    
+    const cycleTimeEl = document.getElementById('cycle-time');
+    if (cycleTimeEl) {
+      cycleTimeEl.textContent = cycleTime;
+    }
+    
+    const wipTotalEl = document.getElementById('wip-total');
+    if (wipTotalEl) {
+      wipTotalEl.textContent = wip;
+    }
+  }
+
+  function updateBayFlowDisplay() {
+    const bayFlowEl = document.getElementById('bay-flow');
+    if (bayFlowEl) {
+      bayFlowEl.innerHTML = '';
+      
+      appState.bayFlow.forEach((bay, index) => {
+        const bayDiv = document.createElement('div');
+        bayDiv.className = 'bay-item';
+        bayDiv.innerHTML = `
+          <div class="bay-header">
+            <h5>Bay ${index + 1}</h5>
+            <span class="status-badge ${bay.status === 'active' ? 'bg-success' : 'bg-warning'}">
+              ${bay.status === 'active' ? 'Activo' : 'Pausado'}
+            </span>
+          </div>
+          <div class="bay-content">
+            <p>Unidades: ${bay.units}</p>
+            <p>WIP: ${bay.wip}</p>
+            <p>Throughput: ${bay.throughput}</p>
+          </div>
+        `;
+        bayFlowEl.appendChild(bayDiv);
+      });
+    }
+  }
+
+  function updateBayViewUI() {
+    // Update bay selector
+    const baySelector = document.getElementById('bay-selector');
+    if (baySelector) {
+      baySelector.innerHTML = '';
+      
+      const bayOptions = appState.bayFlow.map((bay, index) => {
+        const bayOption = document.createElement('option');
+        bayOption.value = index + 1;
+        bayOption.textContent = `Bay ${index + 1}`;
+        return bayOption;
+      });
+      
+      baySelector.innerHTML = '';
+      bayOptions.forEach(option => baySelector.appendChild(option));
+      
+      // Update selected bay
+      if (appState.selectedBay) {
+        baySelector.value = appState.selectedBay;
+      }
+    }
+    
+    // Update units list
+    const unitsList = document.getElementById('units-list');
+    if (unitsList) {
+      unitsList.innerHTML = '';
+      
+      const selectedBay = parseInt(baySelector.value) || 0;
+      const bayUnits = appState.bayFlow.find(bay => bay.id === selectedBay) || { units: [] };
+      
+      bayUnits.units.forEach(unit => {
+        const unitItem = document.createElement('div');
+        unitItem.className = 'unit-item';
+        unitItem.innerHTML = `
+          <div class="unit-header">
+            <h6>Unit ${unit.id}</h6>
+            <span class="status-badge ${unit.status === 'active' ? 'bg-success' : 'bg-warning'}">
+              ${unit.status === 'active' ? 'Activo' : 'Pausado'}
+            </span>
+          </div>
+          <div class="unit-content">
+            <p>Bay: ${unit.bay}</p>
+            <p>Progress: ${unit.progress}%</p>
+            <p>Time: ${unit.time}</p>
+          </div>
+        `;
+        unitsList.appendChild(unitItem);
+      });
+    }
+  }
+
+  function updateWorkOrderUI() {
+    // Update work order selector
+    const workOrderSelector = document.getElementById('work-order-selector');
+    if (workOrderSelector) {
+      workOrderSelector.innerHTML = '';
+      
+      const workOrderOptions = appState.workOrders.map(workOrder => {
+        const workOrderOption = document.createElement('option');
+        workOrderOption.value = workOrder.id;
+        workOrderOption.textContent = `Work Order #${workOrder.id}`;
+        return workOrderOption;
+      });
+      
+      workOrderSelector.innerHTML = '';
+      workOrderOptions.forEach(option => workOrderSelector.appendChild(option));
+      
+      // Update selected work order
+      if (appState.selectedWorkOrder) {
+        workOrderSelector.value = appState.selectedWorkOrder;
+      }
+    }
+    
+    // Update work order details
+    updateWorkOrderDetails();
+  }
+
+  function updateWorkOrderDetails() {
+    const workOrderDetails = document.getElementById('work-order-details');
+    if (workOrderDetails) {
+      workOrderDetails.innerHTML = '';
+      
+      const workOrder = appState.workOrders.find(w => w.id === appState.selectedWorkOrder);
+      if (workOrder) {
+        workOrderDetails.innerHTML = `
+          <h4>Work Order #${workOrder.id}</h4>
+          <p><strong>Status:</strong> ${workOrder.status}</p>
+          <p><strong>Bay:</strong> ${workOrder.bay}</p>
+          <p><strong>Units:</strong> ${workOrder.units}</p>
+          <p><strong>Progress:</strong> ${workOrder.progress}%</p>
+          <p><strong>Throughput:</strong> ${workOrder.throughput}</p>
+          <p><strong>WIP:</strong> ${workOrder.wip}</p>
+          <p><strong>Yield Rate:</strong> ${workOrder.yieldRate}</p>
+        `;
+      }
+    }
+  }
+
+  // Toast notifications
+  function showSuccessToast(message) {
+    const successToast = document.getElementById('successToast');
+    const successMessage = document.getElementById('success-message');
+    
+    if (successToast && successMessage) {
+      successMessage.textContent = message;
+      const toast = new bootstrap.Toast(successToast);
+      toast.show();
+    }
+  }
+
+  function showErrorToast(message) {
+    const errorToast = document.getElementById('errorToast');
+    const errorMessage = document.getElementById('error-message');
+    
+    if (errorToast && errorMessage) {
+      errorMessage.textContent = message;
+      const toast = new bootstrap.Toast(errorToast);
+      toast.show();
+    }
+  }
+
+  // Show View helper
+  function showView(view, id) {
+    // Update selected work order or bay
+    if (view === 'work-order') {
+      appState.selectedWorkOrder = id;
+    } else if (view === 'bay') {
+      appState.selectedBay = id;
+    }
+    
+    // Show the appropriate view
+    const views = document.querySelectorAll('.page-view');
+    views.forEach(v => {
+      v.classList.add('d-none');
+    });
+    
+    document.getElementById(view + '-view').classList.remove('d-none');
+    
+    // Update navigation active state
+    const navLinks = document.querySelectorAll('.sidebar .nav-link');
+    navLinks.forEach(nav => nav.classList.remove('active'));
+    document.querySelector(`.nav-link[data-page="${view}"]`)?.classList.add('active');
+    
+    // Initialize charts if on metrics tab
+    if (view === 'work-order') {
+      setTimeout(() => {
+        initCharts();
+      }, 100);
+    }
+  }
+
+  // Initialize charts 
+  function initCharts() {
+    if (document.getElementById('throughputChart') && !document.getElementById('throughputChart').hasAttribute('data-chart-initialized')) {
+      // Throughput Chart
+      const throughputCtx = document.getElementById('throughputChart').getContext('2d');
+      const throughputChart = new Chart(throughputCtx, {
+        type: 'line',
+        data: {
+          labels: ['8:00', '9:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00'],
+          datasets: [{
+            label: 'Unidades por hora',
+            data: [35, 42, 38, 40, 35, 45, 42, 40],
+            borderColor: 'rgba(13, 110, 253, 1)',
+            backgroundColor: 'rgba(13, 110, 253, 0.1)',
+            fill: true,
+            tension: 0.4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false
+        }
+      });
+      document.getElementById('throughputChart').setAttribute('data-chart-initialized', 'true');
+      
+      // Cycle Time Chart
+      const cycleTimeCtx = document.getElementById('cycleTimeChart').getContext('2d');
+      const cycleTimeChart = new Chart(cycleTimeCtx, {
+        type: 'bar',
+        data: {
+          labels: ['Bay 1', 'Bay 2', 'Bay 3', 'Bay 4', 'Bay 5'],
+          datasets: [{
+            label: 'Tiempo de Ciclo (s)',
+            data: [52, 65, 58, 78, 55],
+            backgroundColor: [
+              'rgba(25, 135, 84, 0.6)',
+              'rgba(255, 193, 7, 0.6)',
+              'rgba(25, 135, 84, 0.6)',
+              'rgba(220, 53, 69, 0.6)',
+              'rgba(25, 135, 84, 0.6)'
+            ],
+            borderColor: [
+              'rgba(25, 135, 84, 1)',
+              'rgba(255, 193, 7, 1)',
+              'rgba(25, 135, 84, 1)',
+              'rgba(220, 53, 69, 1)',
+              'rgba(25, 135, 84, 1)'
+            ],
+            borderWidth: 1
+          }, {
+            label: 'Takt Target (60s)',
+            data: [60, 60, 60, 60, 60],
+            type: 'line',
+            borderColor: 'rgba(108, 117, 125, 0.8)',
+            borderWidth: 2,
+            borderDash: [5, 5],
+            fill: false,
+            pointRadius: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true
+            }
+          }
+        }
+      });
+      document.getElementById('cycleTimeChart').setAttribute('data-chart-initialized', 'true');
+      
+      // WIP Chart
+      const wipCtx = document.getElementById('wipChart').getContext('2d');
+      const wipChart = new Chart(wipCtx, {
+        type: 'bar',
+        data: {
+          labels: ['Bay 1', 'Bay 2', 'Bay 3', 'Bay 4', 'Bay 5'],
+          datasets: [{
+            label: 'WIP',
+            data: [3, 5, 4, 6, 0],
+            backgroundColor: 'rgba(13, 202, 240, 0.6)',
+            borderColor: 'rgba(13, 202, 240, 1)',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true
+            }
+          }
+        }
+      });
+      document.getElementById('wipChart').setAttribute('data-chart-initialized', 'true');
+      
+      // Yield Chart
+      const yieldCtx = document.getElementById('yieldChart').getContext('2d');
+      const yieldChart = new Chart(yieldCtx, {
+        type: 'pie',
+        data: {
+          labels: ['Completadas', 'Retrabajo', 'Scrap'],
+          datasets: [{
+            data: [24, 2, 1],
+            backgroundColor: [
+              'rgba(25, 135, 84, 0.6)',
+              'rgba(111, 66, 193, 0.6)',
+              'rgba(220, 53, 69, 0.6)'
+            ],
+            borderColor: [
+              'rgba(25, 135, 84, 1)',
+              'rgba(111, 66, 193, 1)',
+              'rgba(220, 53, 69, 1)'
+            ],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false
+        }
+      });
+      document.getElementById('yieldChart').setAttribute('data-chart-initialized', 'true');
+    }
+  }
+
+  // Consolidated initialization functions
+  function initNavigation() {
+    const navLinks = document.querySelectorAll('.sidebar .nav-link');
+    
+    navLinks.forEach(link => {
+      link.addEventListener('click', function() {
+        const targetPage = this.getAttribute('data-page');
+        
+        // Update active nav link
+        navLinks.forEach(nav => nav.classList.remove('active'));
+        this.classList.add('active');
+        
+        // Show target page view
+        const pageViews = document.querySelectorAll('.page-view');
+        pageViews.forEach(view => {
+          view.classList.add('d-none');
+          if (view.id === targetPage + '-view') {
+            view.classList.remove('d-none');
+          }
+        });
+        
+        // Initialize charts if we're on metrics tab
+        if (targetPage === 'work-order') {
+          setTimeout(() => {
+            initCharts();
+          }, 100);
+        }
+      });
+    });
+  }
+
+  function initWorkOrderTabs() {
+    const woTabs = document.querySelectorAll('#wo-tabs .nav-link');
+    woTabs.forEach(tab => {
+      tab.addEventListener('click', function() {
+        woTabs.forEach(t => t.classList.remove('active'));
+        this.classList.add('active');
+        
+        // If metrics tab, initialize charts
+        if (this.id === 'metrics-tab') {
+          setTimeout(() => {
+            initCharts();
+          }, 100);
+        }
+      });
+    });
+  }
+
+  function initConfigTabs() {
+    const configTabs = document.querySelectorAll('#config-tabs .nav-link');
+    configTabs.forEach(tab => {
+      tab.addEventListener('click', function() {
+        const tabGroup = this.closest('.nav').querySelectorAll('.nav-link');
+        tabGroup.forEach(t => t.classList.remove('active'));
+        this.classList.add('active');
+      });
+    });
+  }
+
+  function initBayViewActions() {
+    // Bay selector
+    const baySelector = document.getElementById('bay-selector');
+    if (baySelector) {
+      baySelector.addEventListener('change', function() {
+        appState.selectedBay = parseInt(this.value);
+        updateBayUnitsList();
+      });
+    }
+    
+    // Unit scanner form
+    const unitScannerForm = document.getElementById('unit-scanner');
+    if (unitScannerForm) {
+      unitScannerForm.closest('form')?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const unitId = unitScannerForm.value;
+        if (unitId) {
+          appState.selectedUnit = unitId;
+          document.getElementById('selected-unit').value = unitId;
+          showSuccessToast('Unit selected successfully!');
+        }
+      });
+    }
+    
+    // Bay action buttons
+    const actionButtons = document.querySelectorAll('#bay-view .btn');
+    actionButtons.forEach(button => {
+      button.addEventListener('click', async function() {
+        // Skip if this is the scanner button
+        if (this.closest('form')?.querySelector('#unit-scanner')) return;
+        
+        let action, message;
+        
+        if (this.innerHTML.includes('Iniciar Paso')) {
+          action = 'startStep';
+          message = 'Paso iniciado correctamente';
+        } else if (this.innerHTML.includes('Completar Paso')) {
+          action = 'completeStep';
+          message = 'Paso completado correctamente';
+        } else if (this.innerHTML.includes('Mover a Siguiente')) {
+          action = 'moveNext';
+          message = 'Unidad movida correctamente';
+        } else if (this.innerHTML.includes('Marcar Retrabajo')) {
+          action = 'markRework';
+          message = 'Unidad marcada para retrabajo';
+        } else if (this.innerHTML.includes('Reportar Problema')) {
+          action = 'reportProblem';
+          message = 'Problema reportado correctamente';
+        } else {
+          return; // Not an action button
+        }
+        
+        const unitId = document.getElementById('selected-unit')?.value;
+        if (!unitId) {
+          showErrorToast('Debe seleccionar una unidad primero');
+          return;
+        }
+        
+        try {
+          setLoading(true);
+          const response = await callLoop(action, { unitId });
+          if (response.status === 'success') {
+            showSuccessToast(message);
+            fetchStateAndUpdateUI();
+          } else {
+            throw new Error(response.message || 'Action failed');
+          }
+        } catch (error) {
+          console.error('Error in bay action:', error);
+          showErrorToast('Error: ' + error.message);
+        } finally {
+          setLoading(false);
+        }
+      });
+    });
+  }
+
+  function initWorkOrderActions() {
+    // Work order selector
+    const woSelector = document.getElementById('wo-selector');
+    if (woSelector) {
+      woSelector.addEventListener('change', function() {
+        appState.selectedWorkOrder = this.value;
+        updateWorkOrderDetails();
+      });
+    }
+    
+    // Deliveries form
+    const deliveryForm = document.querySelector('#deliveries form');
+    if (deliveryForm) {
+      deliveryForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const quantity = document.getElementById('delivery-qty').value;
+        const evidence = document.getElementById('delivery-evidence').value;
+        const notes = document.getElementById('delivery-notes').value;
+        
+        if (!quantity) {
+          showErrorToast('La cantidad es requerida');
+          return;
+        }
+        
+        try {
+          setLoading(true);
+          const response = await callLoop('recordDelivery', { 
+            workOrderId: appState.selectedWorkOrder,
+            quantity,
+            evidence,
+            notes
+          });
+          
+          if (response.status === 'success') {
+            showSuccessToast('Entrega registrada correctamente');
+            fetchStateAndUpdateUI();
+            
+            // Clear form
+            document.getElementById('delivery-qty').value = '';
+            document.getElementById('delivery-evidence').value = '';
+            document.getElementById('delivery-notes').value = '';
+          } else {
+            throw new Error(response.message || 'Failed to record delivery');
+          }
+        } catch (error) {
+          console.error('Error recording delivery:', error);
+          showErrorToast('Error: ' + error.message);
+        } finally {
+          setLoading(false);
+        }
+      });
+    }
+  }
+
+  function initConfigActions() {
+    // Add 'Load Demo Data' button functionality
+    const configSection = document.querySelector('#configuration-view');
+    if (configSection) {
+      // Add Load Demo button
+      const loadDemoBtn = document.createElement('button');
+      loadDemoBtn.className = 'btn btn-primary mb-4';
+      loadDemoBtn.innerHTML = '<i class="fas fa-database"></i> Cargar Datos Demo';
+      loadDemoBtn.onclick = async () => {
+        try {
+          setLoading(true);
+          const response = await callLoop('seedDemo');
+          if (response.status === 'success') {
+            showSuccessToast('Datos demo cargados correctamente');
+            // Refresh state
+            fetchStateAndUpdateUI();
+          } else {
+            throw new Error(response.message || 'Failed to load demo data');
+          }
+        } catch (error) {
+          console.error('Error loading demo data:', error);
+          showErrorToast('Error: ' + error.message);
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+      // Insert at top of config view
+      const firstEl = configSection.querySelector('h2');
+      if (firstEl) {
+        firstEl.insertAdjacentElement('afterend', loadDemoBtn);
+      }
+    }
+  }
+
+  function initNewWorkOrderModal() {
+    const saveWorkOrderBtn = document.getElementById('saveWorkOrder');
+    if (saveWorkOrderBtn) {
+      saveWorkOrderBtn.addEventListener('click', async function() {
+        const model = document.getElementById('wo-model').value;
+        const line = document.getElementById('wo-line').value;
+        const quantity = document.getElementById('wo-quantity').value;
+        
+        if (!model || !line || !quantity) {
+          showErrorToast('Todos los campos son requeridos');
+          return;
+        }
+        
+        try {
+          setLoading(true);
+          const response = await callLoop('createWorkOrder', {
+            model,
+            line,
+            quantity: parseInt(quantity)
+          });
+          
+          if (response.status === 'success') {
+            showSuccessToast('Orden de trabajo creada correctamente');
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('newWorkOrderModal'));
+            if (modal) modal.hide();
+            
+            // Clear form
+            document.getElementById('wo-model').value = '';
+            document.getElementById('wo-line').value = '';
+            document.getElementById('wo-quantity').value = '';
+            
+            // Refresh state
+            fetchStateAndUpdateUI();
+          } else {
+            throw new Error(response.message || 'Failed to create work order');
+          }
+        } catch (error) {
+          console.error('Error creating work order:', error);
+          showErrorToast('Error: ' + error.message);
+        } finally {
+          setLoading(false);
+        }
+      });
+    }
+  }
+
+  // Main initialization
+  document.addEventListener('DOMContentLoaded', function() {
+    // Initialize all components
+    initNavigation();
+    initWorkOrderTabs();
+    initConfigTabs();
+    initBayViewActions();
+    initWorkOrderActions();
+    initConfigActions();
+    initNewWorkOrderModal();
+    
+    // Initialize tooltips
+    const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltips.forEach(tooltip => {
+      new bootstrap.Tooltip(tooltip);
+    });
+    
+    // Start polling
+    startPolling();
+    
+    // Export globally needed functions
+    window.showSuccessToast = showSuccessToast;
+    window.showErrorToast = showErrorToast;
+    window.setLoading = setLoading;
+    window.showView = showView;
+    
+    console.log('MES Ligero - App initialized');
+  });
+</script>
+
+  <footer class="bg-light text-center text-muted py-3 mt-5">
+    <small>MES Ligero v1.0 | Powered by <a href="https://magicloops.dev">Magic Loops</a></small>
+  </footer>
+</body>
+</html>
